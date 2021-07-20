@@ -1,0 +1,38 @@
+<?php
+
+/**
+ * @file
+ * Contains ead.module.
+ */
+
+use Drupal\Core\Routing\RouteMatchInterface;
+
+/**
+ * Implements hook_help().
+ */
+function ead_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    // Main module help for the ead module.
+    case 'help.page.ead':
+      $output = '';
+      $output .= '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('Ingest and display EAD XML') . '</p>';
+      return $output;
+
+    default:
+  }
+}
+
+
+/**
+ * Implements hook_theme().
+ */
+function ead_theme() {
+  return [
+    'ead' => [
+      'variables' => [
+        'html' => '',
+      ],
+    ],
+  ];
+}
