@@ -30,7 +30,7 @@ function ead_help($route_name, RouteMatchInterface $route_match) {
 
 function ead_entity_presave(Drupal\Core\Entity\EntityInterface $entity) {
   $bundle = $entity->bundle();
-  if ($bundle  == 'ead_finding_aid') {
+  if ($bundle == 'ead_finding_aid') {
     $fid = $entity->get('field_ead')->target_id;
     $file = File::load($fid);
     $xml = \simplexml_load_file($file->getFileUri());
@@ -39,18 +39,19 @@ function ead_entity_presave(Drupal\Core\Entity\EntityInterface $entity) {
 
     $dates = [];
     foreach ($xml->archdesc->did->unitdate as $unitdate) {
-      $tag = (string) $xml->archdesc->did->unitdate['encodinganalog'];
-      $label = (string) $xml->archdesc->did->unitdate['label'];
-      if ($tag == '245$f' ) {
-        $dates[] = (string) trim($unitdate);
+      $tag = (string) $unitdate['encodinganalog'];
+      $label = (string) $unitdate['label'];
+      $unitdate = trim($unitdate);
+      if ($tag == '245$f') {
+        $dates[] = "$label $unitdate";
       }
-      $ead_date = $entity->get('field_ead_date');
-      foreach ($dates as $date){
-        $ead_date->appendItem($date);
-      }
-
     }
+    $ead_date = $entity->get('field_ead_date');
+    $ead_date->setValue(NULL);
 
+    foreach ($dates as $date) {
+      $ead_date->appendItem($date);
+    }
   }
 }
 
