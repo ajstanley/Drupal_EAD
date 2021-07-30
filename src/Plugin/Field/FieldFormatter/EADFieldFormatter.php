@@ -7,6 +7,8 @@ use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Field\FormatterBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\file\Entity\File;
+use Drupal\Core\Link;
+use Drupal\Core\Url;
 
 /**
  * Plugin implementation of the 'eadfield_formatter' formatter.
@@ -58,9 +60,15 @@ class EADFieldFormatter extends FormatterBase {
     foreach ($items as $delta => $item) {
       $elements[$delta] = ['#markup' => $this->viewValue($item)];
     }
+    $fileItem = $item->getValue();
+    $file_url = File::load($fileItem['target_id'])->getFileUri();
+    $uri = Url::fromUri(file_create_url($file_url));
+    $link = Link::fromTextAndUrl("Link to XML", $uri);
+    $link = $link->toRenderable();
     $theme = [
       '#theme' => 'ead',
       '#html' => $elements,
+      '#link' => $link,
 
     ];
 
