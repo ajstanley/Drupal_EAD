@@ -115,7 +115,6 @@ class IngestEADForm extends FormBase {
       $zip->remove($file);
     } catch (ArchiverException $exception) {
       watchdog_exception('ead', $exception);
-      // Some code if the error of unzip will happen.
     }
     $cleaned = \array_filter($files, function ($k) {
       if (substr($k, 0, 8) == '__MACOSX' || \explode('.', $k)[1] != \strtolower('xml')) {
