@@ -117,11 +117,14 @@ class IngestEADForm extends FormBase {
       watchdog_exception('ead', $exception);
       // Some code if the error of unzip will happen.
     }
-    foreach ($files as $candidate) {
-      if (substr($candidate, 0, 8) == '__MACOSX') {
-        continue;
+    $cleaned = \array_filter($files, function ($k) {
+      if (substr($k, 0, 8) == '__MACOSX' || \explode('.', $k)[1] != \strtolower('xml')) {
+        return FALSE;
       }
+      return TRUE;
+    });
 
+    foreach ($cleaned as $candidate) {
       $source = "$tmp/$candidate";
       $dest = 'public://eads1';
       $contents = \file_get_contents($source);
@@ -146,8 +149,7 @@ class IngestEADForm extends FormBase {
       $new_ead->save();
     }
     $this->fileSystem->deleteRecursive($tmp);
-
-
     $file->delete();
+    \Drupal::messenger()->addStatus(count($cleaned) . "EAD records created");
   }
 }
