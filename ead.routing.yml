@@ -1,0 +1,7 @@
+ead.ingest_ead_form:
+  path: '/bulkupload/ead'
+  defaults:
+    _form: '\Drupal\ead\Form\IngestEADForm'
+    _title: 'IngestEADForm'
+  requirements:
+    _access: 'TRUE'

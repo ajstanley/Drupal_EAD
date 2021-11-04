@@ -1,0 +1,5 @@
+ead.admin_settings:
+  title: 'EAD XML Import'
+  parent: system.admin_config_content
+  description: 'To import EADs from zipped file.'
+  route_name: ead.ingest_ead_form
