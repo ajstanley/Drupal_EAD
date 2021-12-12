@@ -7,7 +7,6 @@ use Drupal\Core\Archiver\Zip;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\file\Entity\File;
-use Drupal\node\Entity\Node;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -71,7 +70,7 @@ class IngestEADForm extends FormBase {
       '#type' => 'managed_file',
       '#title' => $this->t('EAD Files'),
       '#description' => $this->t('Upload zipped EAD file'),
-      '#upload_location' => 'public://csvs',
+      '#upload_location' => 'public://guides',
       '#upload_validators' => [
         'file_validate_extensions' => ['zip'],
       ],
@@ -103,7 +102,7 @@ class IngestEADForm extends FormBase {
     $fid = $values['ead_files'][0];
     $file = File::load($fid);
     $path = $file->getFileUri();
-    $tmp = 'public://csvs/tmp';
+    $tmp = 'public://guides/tmp';
     $realpath = $this->fileSystem->realpath($path);
     $destination = $this->fileSystem->realpath($tmp);
 
@@ -116,39 +115,26 @@ class IngestEADForm extends FormBase {
     } catch (ArchiverException $exception) {
       watchdog_exception('ead', $exception);
     }
+    $file->delete();
     $cleaned = \array_filter($files, function ($k) {
       if (substr($k, 0, 8) == '__MACOSX' || \explode('.', $k)[1] != \strtolower('xml')) {
         return FALSE;
       }
       return TRUE;
     });
-
-    foreach ($cleaned as $candidate) {
-      $source = "$tmp/$candidate";
-      $dest = 'public://eads1';
-      $contents = \file_get_contents($source);
-      $file_parts = [
-        'filename' => $candidate,
-        'uri' => "$dest/$candidate",
-        'status' => 1,
+    sort($cleaned);
+    foreach ($cleaned as $item) {
+      $operations[] = [
+        '\Drupal\ead\BuildEAD::buildNode',
+        [$item, $values['collection']],
       ];
-      $ead_file = File::create($file_parts);
-      $ead_file->save();
-      $dir = dirname($ead_file->getFileUri());
-      if (!file_exists($dir)) {
-        mkdir($dir, 0770, TRUE);
-      }
-      \file_put_contents($ead_file->getFileUri(), $contents);
-      $ead_file->save();
-      $new_ead = Node::create(['type' => 'ead_finding_aid']);
-      $new_ead->set('title', 'PlaceHolder');
-      $new_ead->set('field_ead', $ead_file->id());
-      $new_ead->set('field_member_of', $values['collection']);
-      $new_ead->enforceIsNew();
-      $new_ead->save();
     }
-    $this->fileSystem->deleteRecursive($tmp);
-    $file->delete();
-    \Drupal::messenger()->addStatus(count($cleaned) . "EAD records created");
+    $batch = [
+      'title' => t('Building Nodes...'),
+      'operations' => $operations,
+      'finished' => '\Drupal\ead\BuildEAD::EADFinishedCallback',
+    ];
+    batch_set($batch);
   }
+
 }
