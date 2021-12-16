@@ -68,7 +68,8 @@ function ead_entity_presave(Drupal\Core\Entity\EntityInterface $entity) {
         $entity->set('field_creator', $new_term->id());
       }
       else {
-        $entity->set('field_creator', $test->id());
+        $term = reset($test);
+        $entity->set('field_creator', $term->id());
       }
     }
     $abstract = trim(preg_replace('/\t+/', '', $xml->archdesc->did->abstract));
