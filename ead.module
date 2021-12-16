@@ -54,8 +54,22 @@ function ead_entity_presave(Drupal\Core\Entity\EntityInterface $entity) {
       $entity->set('title', $title);
     }
     $creator = (string) $xml->archdesc->did->origination->persname;
+
     if ($creator) {
-      $entity->set('field_creator', $creator);
+      $test = \Drupal::entityTypeManager()
+        ->getStorage('taxonomy_term')
+        ->loadByProperties(['name' => $creator, 'vid' => 'person']);
+      if(!$test){
+        $new_term = Term::create([
+          'name' => $creator,
+          'vid' => 'person',
+        ]);
+        $new_term->save();
+        $entity->set('field_creator', $new_term->id());
+      }
+      else {
+        $entity->set('field_creator', $test->id());
+      }
     }
     $abstract = trim(preg_replace('/\t+/', '', $xml->archdesc->did->abstract));
     if ($abstract) {
