@@ -43,9 +43,13 @@ function ead_entity_presave(Drupal\Core\Entity\EntityInterface $entity) {
       echo 'Errors are '.var_export($errors, true);
       throw new \Exception('invalid XML');
     }
-    $title = (string) $xml->archdesc->did->unittitle[0];
+    $title = trim($xml->eadheader->filedesc->titlestmt->titleproper);
+
+    $collection_title = (string) $xml->archdesc->did->unittitle[0];
+    if ($collection_title) {
+      $entity->set('field_collection_title', $collection_title);
+    }
     $title = trim($title);
-    \Drupal::logger('agile EAD')->notice("$title started");
     if ($title) {
       $entity->set('title', $title);
     }
