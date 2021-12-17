@@ -36,14 +36,31 @@ function ead_entity_presave(Drupal\Core\Entity\EntityInterface $entity) {
   if ($bundle == 'ead_finding_aid') {
     $fid = $entity->get('field_ead')->target_id;
     $file = File::load($fid);
-    libxml_use_internal_errors(true);
+    libxml_use_internal_errors(TRUE);
     $xml = \simplexml_load_string(file_get_contents($file->getFileUri()));
-    if (false === $xml) {
+    if (FALSE === $xml) {
       $errors = libxml_get_errors();
-      echo 'Errors are '.var_export($errors, true);
+      echo 'Errors are ' . var_export($errors, TRUE);
       throw new \Exception('invalid XML');
     }
     $title = trim($xml->eadheader->filedesc->titlestmt->titleproper);
+    $control_access = [];
+    foreach ($xml->xpath('//controlaccess/persname') as $person) {
+      $control_access['person'][] = trim($person);
+    }
+    foreach ($xml->xpath('//controlaccess/genreform') as $document_type) {
+      $control_access['document_types'][] = trim($document_type);
+    }
+    foreach ($xml->xpath('//controlaccess/corpname') as $organization) {
+      $control_access['corporate_body'][] = trim($organization);
+    }
+    foreach ($xml->xpath('//controlaccess/subject') as $subject) {
+      $control_access['subject'][] = trim($subject);
+    }
+    foreach ($xml->xpath('//controlaccess/geogname') as $geo_location) {
+      $control_access['geo_location'][] = trim($geo_location);
+    }
+
 
     $collection_title = (string) $xml->archdesc->did->unittitle[0];
     if ($collection_title) {
@@ -56,21 +73,8 @@ function ead_entity_presave(Drupal\Core\Entity\EntityInterface $entity) {
     $creator = (string) $xml->archdesc->did->origination->persname;
 
     if ($creator) {
-      $test = \Drupal::entityTypeManager()
-        ->getStorage('taxonomy_term')
-        ->loadByProperties(['name' => $creator, 'vid' => 'person']);
-      if(!$test){
-        $new_term = Term::create([
-          'name' => $creator,
-          'vid' => 'person',
-        ]);
-        $new_term->save();
-        $entity->set('field_creator', $new_term->id());
-      }
-      else {
-        $term = reset($test);
-        $entity->set('field_creator', $term->id());
-      }
+      $tid = get_term_ids('person', [$creator]);
+      $entity->set('field_creator', $tid[0]);
     }
     $abstract = trim(preg_replace('/\t+/', '', $xml->archdesc->did->abstract));
     if ($abstract) {
@@ -87,80 +91,17 @@ function ead_entity_presave(Drupal\Core\Entity\EntityInterface $entity) {
     }
     $ead_date = $entity->get('field_ead_date');
     $ead_date->setValue(NULL);
-    $unit = $xml->archdesc->controlaccess;
-    if (!$unit) {
-      $stop = 'here';
-    }
 
     foreach ($dates as $date) {
       $ead_date->appendItem($date);
     }
-    $control_accesses = get_object_vars($xml->archdesc->controlaccess->children());
-    $vocabs = [];
-    if (!is_array($control_accesses['controlaccess'])) {
-      $control_accesses['controlaccess'] = [$control_accesses['controlaccess']];
-    }
 
-    foreach ($control_accesses['controlaccess'] as $cluster) {
-      $props = get_object_vars($cluster);
-      $keys = array_keys($props);
-      $vocabs[$props[$keys[0]]] = $props[$keys[1]];
-    }
-
-    $mappings = [
-      'Names:' => 'person',
-      'Organizations:' => 'corporate_body',
-      'Subjects:' => 'subject',
-      'Places:' => 'geo_location',
-      'Document Types:' => 'document_types',
-      'Document types:' => 'document_types',
-      'Titles:' => 'titles'
-    ];
-    $tags = [];
-
-    foreach ($vocabs as $vocab => $terms) {
-      if (!is_array($terms)) {
-        $terms = [$terms];
-      }
-
-      $current = $mappings[trim($vocab)];
-      foreach ($terms as $term) {
-        $type = getType($term);
-        if($type == 'object'){
-          $term = (string) $term;
-        }
-        $term = trim(preg_replace('/\t+|\n/', ' ', $term));
-        $term = preg_replace('/\s+/', ' ', $term);
-        if ($current != 'person') {
-          $term = trim($term, '.');
-        }
-        if(!$current){
-          continue;
-        }
-        $test = \Drupal::entityTypeManager()
-          ->getStorage('taxonomy_term')
-          ->loadByProperties(['name' => $term, 'vid' => $current]);
-        if (!$test) {
-          if (!$term) {
-            continue;
-          }
-          $new_term = Term::create([
-            'name' => $term,
-            'vid' => $current,
-          ]);
-          $new_term->save();
-          $tags[$current][] = $new_term->id();
-        }
-        else {
-          $tags[$current][] = reset($test)->id();
-        }
-      }
-    }
-    foreach ($tags as $field => $values) {
+    foreach ($control_access as $field => $values) {
+      $tids = get_term_ids($field, $values);
       $entity_field = $entity->get("field_$field");
       $entity_field->setValue(NULL);
-      foreach ($values as $value) {
-        $entity_field->appendItem($value);
+      foreach ($tids as $tid) {
+        $entity_field->appendItem($tid);
       }
     }
     \Drupal::logger('agile EAD')->notice("$title completed");
@@ -181,4 +122,27 @@ function ead_theme() {
       ],
     ],
   ];
+}
+
+
+function get_term_ids($vid, $terms) {
+  $tids = [];
+  $terms = array_filter($terms);
+  foreach ($terms as $term) {
+    $test = \Drupal::entityTypeManager()
+      ->getStorage('taxonomy_term')
+      ->loadByProperties(['name' => $term, 'vid' => $vid]);
+    if (!$test) {
+      $new_term = Term::create([
+        'name' => $term,
+        'vid' => $vid,
+      ]);
+      $new_term->save();
+      $tids[] = $new_term->id();
+    }
+    else {
+      $tids[] = reset($test)->id();
+    }
+  }
+  return $tids;
 }
