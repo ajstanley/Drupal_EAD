@@ -44,24 +44,6 @@ function ead_entity_presave(Drupal\Core\Entity\EntityInterface $entity) {
       throw new \Exception('invalid XML');
     }
     $title = trim($xml->eadheader->filedesc->titlestmt->titleproper);
-    $control_access = [];
-    foreach ($xml->xpath('//controlaccess/persname') as $person) {
-      $control_access['person'][] = trim($person);
-    }
-    foreach ($xml->xpath('//controlaccess/genreform') as $document_type) {
-      $control_access['document_types'][] = trim($document_type);
-    }
-    foreach ($xml->xpath('//controlaccess/corpname') as $organization) {
-      $control_access['corporate_body'][] = trim($organization);
-    }
-    foreach ($xml->xpath('//controlaccess/subject') as $subject) {
-      $control_access['subject'][] = trim($subject);
-    }
-    foreach ($xml->xpath('//controlaccess/geogname') as $geo_location) {
-      $control_access['geo_location'][] = trim($geo_location);
-    }
-
-
     $collection_title = (string) $xml->archdesc->did->unittitle[0];
     if ($collection_title) {
       $entity->set('field_collection_title', $collection_title);
@@ -94,6 +76,23 @@ function ead_entity_presave(Drupal\Core\Entity\EntityInterface $entity) {
 
     foreach ($dates as $date) {
       $ead_date->appendItem($date);
+    }
+
+    $control_access = [];
+    foreach ($xml->xpath('//controlaccess/persname') as $person) {
+      $control_access['person'][] = trim($person);
+    }
+    foreach ($xml->xpath('//controlaccess/genreform') as $document_type) {
+      $control_access['document_types'][] = trim($document_type);
+    }
+    foreach ($xml->xpath('//controlaccess/corpname') as $organization) {
+      $control_access['corporate_body'][] = trim($organization);
+    }
+    foreach ($xml->xpath('//controlaccess/subject') as $subject) {
+      $control_access['subject'][] = trim($subject);
+    }
+    foreach ($xml->xpath('//controlaccess/geogname') as $geo_location) {
+      $control_access['geo_location'][] = trim($geo_location);
     }
 
     foreach ($control_access as $field => $values) {
