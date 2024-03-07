@@ -87,7 +87,7 @@ class EADFieldFormatter extends FormatterBase {
    */
   protected function viewValue(FieldItemInterface $item) {
     global $base_url;
-    $path = drupal_get_path('module', 'ead');
+    $path = \Drupal::service('extension.list.module')->getPath('ead');
     $fileItem = $item->getValue();
     // Create XML file
     $xml = new \DOMDocument();
