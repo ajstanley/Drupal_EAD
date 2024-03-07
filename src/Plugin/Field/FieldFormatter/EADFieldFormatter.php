@@ -62,8 +62,8 @@ class EADFieldFormatter extends FormatterBase {
     }
     $fileItem = $item->getValue();
     $file_url = File::load($fileItem['target_id'])->getFileUri();
-    $uri = Url::fromUri(file_create_url($file_url));
-    $link = Link::fromTextAndUrl("Link to XML", $uri);
+    $uri = \Drupal::service('file_url_generator')->generateAbsoluteString($file_url);
+    $url = Url::fromUri($uri);
     $link = $link->toRenderable();
     $theme = [
       '#theme' => 'ead',
